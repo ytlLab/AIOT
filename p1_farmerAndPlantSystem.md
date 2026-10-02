@@ -7,6 +7,14 @@
 - ESP32 收到 Gemini 回傳的 JSON 文字後，直接發送 Webhook 到 Discord 頻道。若使用者在 Blynk 上按「澆水」，ESP32 直接驅動繼電器開關(使用紅綠燈模組模擬澆水狀態，紅燈表示需澆水，黃燈表示澆水中，綠燈表示澆水完畢)。
 
 ## 基本程式範例
+| 元件         |   ESP32 |
+| ---------- | ------: |
+| DHT11 DATA |  GPIO 4 |
+| 土壤 S      | GPIO 34 |
+| 光敏 S     | GPIO 35 |
+| 🔴 RED     | GPIO 25 |
+| 🟡 YELLOW  | GPIO 26 |
+| 🟢 GREEN   | GPIO 27 |
 
 ### 紅綠燈模組
 
