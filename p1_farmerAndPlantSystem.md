@@ -173,5 +173,247 @@ void loop() {
 ```
 綜合測試
 ```
+// ======================================================
+// ESP32 AIoT 智慧農夫 - 植物環境監控系統
+//
+// 功能：
+// 1. DHT11：溫度、空氣濕度
+// 2. 土壤濕度：0~100%
+// 3. 光敏電阻：光照 ADC
+// 4. 紅綠燈：植物澆水狀態
+//
+// 紅燈：土壤過乾，需要澆水
+// 黃燈：澆水中
+// 綠燈：澆水完成 / 不需要澆水
+//
+// ======================================================
 
+// ======================================================
+// GPIO 腳位設定
+// ======================================================
+
+// 紅綠燈
+#define RED_LED     27
+#define YELLOW_LED  26
+#define GREEN_LED   25
+// DHT11
+#define DHT_PIN     4
+// 土壤濕度
+#define SOIL_PIN    34
+// 光敏電阻
+#define LIGHT_PIN   35
+
+// ======================================================
+// DHT11
+// ======================================================
+#include "DHTesp.h"
+DHTesp dht;
+
+// ======================================================
+// 土壤濕度校正值
+// ======================================================
+// 依照你的實際測試結果設定
+#define SOIL_DRY_VALUE  0
+#define SOIL_WET_VALUE  1100
+
+// ======================================================
+// 土壤過乾判斷值
+// ======================================================
+// 小於 30% → 需要澆水
+#define SOIL_DRY_LEVEL 30
+
+// ======================================================
+// 讀取時間
+// ======================================================
+// 感測器每 2 秒讀取一次
+unsigned long previousMillis = 0;
+const unsigned long SENSOR_INTERVAL = 2000;
+
+// ======================================================
+// 系統狀態
+// ======================================================
+enum PlantState {
+  NEED_WATER,     // 需要澆水
+  WATERING,       // 澆水中
+  WATERED         // 澆水完成 / 不需要澆水
+};
+PlantState plantState = WATERED;
+
+// ======================================================
+// LED 函式
+// ======================================================
+void redLight() {
+  digitalWrite(RED_LED,HIGH);
+  digitalWrite(YELLOW_LED,LOW);
+  digitalWrite(GREEN_LED,LOW);
+}
+void yellowLight() {
+  digitalWrite(RED_LED,LOW);
+  digitalWrite(YELLOW_LED,HIGH);
+  digitalWrite(GREEN_LED,LOW);
+}
+void greenLight() {
+  digitalWrite(RED_LED,LOW);
+  digitalWrite(YELLOW_LED,LOW);
+  digitalWrite(GREEN_LED,HIGH);
+}
+
+// ======================================================
+// 顯示植物狀態
+// ======================================================
+
+void showPlantState() {
+  Serial.print("植物狀態：");
+  switch (plantState) {
+    case NEED_WATER:
+      Serial.println("需要澆水");
+      redLight();
+      break;
+
+    case WATERING:
+      Serial.println("澆水中");
+      yellowLight();
+      break;
+
+    case WATERED:
+      Serial.println("澆水完成 / 不需要澆水");
+      greenLight();
+      break;
+  }
+}
+
+
+// ======================================================
+// 讀取所有感測器
+// ======================================================
+void readSensors() {
+  // ====================================================
+  // DHT11
+  // ====================================================
+  TempAndHumidity data = dht.getTempAndHumidity();
+  float temperature = data.temperature;
+  float humidity = data.humidity;
+
+  // ====================================================
+  // 土壤濕度
+  // ====================================================
+  int soilRaw =analogRead(SOIL_PIN);
+  int soilPercent = map(soilRaw,SOIL_DRY_VALUE,SOIL_WET_VALUE,0,100);
+  // 限制在 0～100%
+  soilPercent =constrain(soilPercent,0,100);
+
+  // ====================================================
+  // 光照
+  // ====================================================
+  int lightRaw = analogRead(LIGHT_PIN);
+
+  // ====================================================
+  // 顯示資料
+  // ====================================================
+  Serial.println();
+  Serial.println("==========================================");
+  Serial.println("🌱 植物環境監控系統");
+  Serial.println("==========================================");
+
+  // 溫度
+  Serial.print("🌡 溫度：");
+  Serial.print(temperature,1);
+  Serial.println(" °C");
+
+  // 空氣濕度
+  Serial.print("💧 空氣濕度：");
+  Serial.print(humidity,0);
+  Serial.println(" %");
+
+  // 土壤 ADC
+  Serial.print("🌱 土壤 ADC：");
+  Serial.println(soilRaw);
+
+  // 土壤濕度
+  Serial.print("🌱 土壤濕度：");
+  Serial.print(soilPercent);
+  Serial.println(" %");
+
+  // 光照
+  Serial.print("☀️ 光照 ADC：");
+  Serial.println(lightRaw);
+
+  // ====================================================
+  // 土壤狀態判斷
+  // ====================================================
+  /*
+   * 如果目前不是澆水狀態，
+   * 才根據土壤濕度決定紅燈或綠燈。
+   */
+  if (plantState != WATERING) {
+    if (soilPercent < SOIL_DRY_LEVEL    ) {
+      // 土壤過乾
+      plantState = NEED_WATER;
+    }
+    else {
+      // 土壤正常
+      plantState = WATERED;
+    }
+  }
+
+  // ====================================================
+  // 顯示 LED 狀態
+  // ====================================================
+  showPlantState();
+  Serial.println("==========================================");
+}
+
+void setup() {
+  Serial.begin(115200);
+  // ====================================================
+  // 紅綠燈 GPIO
+  // ====================================================
+  pinMode(RED_LED,OUTPUT);
+  pinMode(YELLOW_LED,OUTPUT);
+  pinMode(GREEN_LED,OUTPUT);
+  // 一開始全部關閉
+  digitalWrite(RED_LED,LOW);
+  digitalWrite(YELLOW_LED,LOW);
+  digitalWrite(GREEN_LED,LOW);
+
+  // ====================================================
+  // DHT11
+  // ====================================================
+  dht.setup(DHT_PIN,DHTesp::DHT11);
+  // 等待 DHT11 穩定
+  delay(2000);
+
+  // ====================================================
+  // 啟動訊息
+  // ====================================================
+  Serial.println();
+  Serial.println(
+    "=========================================="
+  );
+
+  Serial.println("ESP32 植物環境監控系統");
+  Serial.println("==========================================");
+  Serial.println("DHT11      → GPIO 4");
+  Serial.println("Soil      → GPIO 34");
+  Serial.println("Light     → GPIO 35");
+  Serial.println("RED       → GPIO 25");
+  Serial.println("YELLOW    → GPIO 26");
+  Serial.println("GREEN     → GPIO 27");
+  Serial.println("==========================================");
+  // 預設綠燈
+  greenLight();
+}
+
+void loop() {
+  unsigned long currentMillis =  millis();
+  // ====================================================
+  // 每 2 秒讀取一次
+  // ====================================================
+
+  if (currentMillis - previousMillis >= SENSOR_INTERVAL) 
+  {
+    previousMillis = currentMillis;
+    readSensors();
+  }
+}
 ```
