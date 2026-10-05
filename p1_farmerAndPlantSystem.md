@@ -12,9 +12,9 @@
 | DHT11 DATA |  GPIO 4 |
 | 土壤 S      | GPIO 34 |
 | 光敏 S     | GPIO 35 |
-| 🔴 RED     | GPIO 25 |
+| 🔴 RED     | GPIO 27 |
 | 🟡 YELLOW  | GPIO 26 |
-| 🟢 GREEN   | GPIO 27 |
+| 🟢 GREEN   | GPIO 25 |
 
 ### 紅綠燈模組測試
 
@@ -23,9 +23,9 @@
 // ESP32 紅綠燈模組測試
 // ========================================
 
-#define RED_LED     25
+#define RED_LED     27
 #define YELLOW_LED  26
-#define GREEN_LED   27
+#define GREEN_LED   25
 
 void setup() {
 
