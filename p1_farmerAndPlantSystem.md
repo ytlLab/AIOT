@@ -1,4 +1,3 @@
-
 # 智慧農夫與植物診斷系統
 運作流程：
 - ESP32 使用 Timer 定時讀取土壤濕度、DHT22 溫濕度與光照數據。
@@ -417,3 +416,46 @@ void loop() {
   }
 }
 ```
+## Blynk
+Blynk 是一個專為物聯網（IoT）設計的雲端平台與應用程式開發工具，能讓使用者快速建立硬體專案的遠端控制與監測介面。
+
+1. 主要功能與組成元件
+- Blynk IoT App (iOS / Android)：提供手機端的操作介面，可透過拖曳方式快速建立按鈕、滑桿、圖表與指示燈。
+- Blynk.Console：強大的網頁管理後台，可用來管理裝置、使用者帳號、檢視歷史數據以及執行遠端 OTA（空中下載）韌體更新。
+- Blynk.Cloud：提供安全託管、雲端基礎架構、24/7 事件監控與端對端加密。
+- 虛擬腳位（Virtual Pins）：硬體與雲端、App 之間傳遞資料的核心機制（例如 V0、V1、V2 等），可用來傳送開關狀態、感測器數值等。
+
+2. 支援的硬體與連線方式
+- 支援硬體：相容超過 400 種開發板與微控制器，包含 ESP32、ESP8266、Arduino、Raspberry Pi（樹莓派）、Seeed Wio Terminal 等。
+- 連線協定：支援 Wi-Fi、乙太網路、蜂巢網路（GSM/LTE）、LoRaWAN、HTTP(s) 及 MQTT。
+
+### Blynk Web 端設定
+登入 [Blynk](https://www.blynk.io/) 控制台進行設定
+
+### 建立 Template (模板)
+1. 點擊左側 Developer Zone -> Templates -> + New Template。
+2. Name 設定為 Smart Plant，Hardware 選擇 ESP32，Connection Type 選擇 WiFi，完成後點擊 Done。
+
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/7a82993c-f5fd-491b-8588-ca9b5b7ded8a" />
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/89c5ad47-e8bb-4906-a3ec-4cb1892620db" />
+<img width="400" height="200" alt="image" src="https://github.com/user-attachments/assets/a5d577d2-2904-4072-bdd7-b2bf959a84da" />
+<img width="400" height="200" alt="image" src="https://github.com/user-attachments/assets/5164c42c-1b79-4373-a046-6314e07333ea" />
+
+系統會提示以下訊息，請先複製到記事本或WORD暫存。</br>
+<img width="300" height="150" alt="image" src="https://github.com/user-attachments/assets/f16466d8-d53e-4030-bbde-8372e1ac67da" />
+
+
+
+### 設定 Datastreams (資料流)
+進入 Template 後點選 Datastreams 標籤頁，建立以下 5 個 Virtual Pins：
+<img width="800" height="400" alt="image" src="https://github.com/user-attachments/assets/887ab1ef-b081-4323-a4c5-8ff105e8fef9" />
+
+| 名稱 | Virtual Pin | 資料類型 (Data Type) | 最小值 | 最大值 |
+| :--- | :--- | :--- |:--- |:--- |
+| 溫度 | V0 | Double / Float | 0 | 50 |
+| 空氣濕度 | V1 | Double / Float | 0 | 100 |
+| 土壤濕度 | V2 | Integer / Float | 0 | 100 |
+| 光照度 | V3 | Integer / Float | 0 | 4096 |
+| 澆水按鈕 | V4 | Integer / Float | 0 | 1 |
+
+### 設定 Web / Mobile Dashboard (儀表板)
