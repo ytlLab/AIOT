@@ -459,3 +459,209 @@ Blynk 是一個專為物聯網（IoT）設計的雲端平台與應用程式開�
 | 澆水按鈕 | V4 | Integer / Float | 0 | 1 |
 
 ### 設定 Web / Mobile Dashboard (儀表板)
+1. 開啟 Developer Zone 標籤頁
+2. 點擊先前建立的 Smart Plant
+3. 切換分頁至 Dashboard
+4. 開啟編輯模式與拖拽元件
+  - 點擊右上角藍色的 Edit 按鈕（或鉛筆圖示）
+  - Gauge / Value 元件：分別綁定 V0 (溫度)、V1 (空氣濕度)、V2 (土壤濕度)、V3 (光照度)。
+  - Button 元件：綁定 V4 (澆水按鈕)，模式設為 Switch 或 Push。
+5. 完成後點擊右上角 Save and Apply
+
+### 上傳 Blynk 範例程式
+<img width="500" height="100" alt="image" src="https://github.com/user-attachments/assets/2b6bbb5c-8039-47d3-a39d-04d016e25f9a" />
+
+
+```
+// ======================================================
+// ESP32 AIoT 智慧農夫 - 植物環境監控系統 (整合 Blynk 2.0)
+// ======================================================
+
+// 1. 請填入您從 Blynk 取得的認證資訊 (必須放置於最頂端)
+#define BLYNK_TEMPLATE_ID           "YOUR_TEMPLATE_ID"
+#define BLYNK_TEMPLATE_NAME         "Smart Plant"
+#define BLYNK_AUTH_TOKEN            "YOUR_AUTH_TOKEN"
+
+#define BLYNK_PRINT Serial
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include "DHTesp.h"
+
+// WiFi 設定
+char auth[] = BLYNK_AUTH_TOKEN;
+
+char ssid[] = "YOUR_WIFI_SSID";     // 您的 WiFi 名稱
+char pass[] = "YOUR_WIFI_PASS";     // 您的 WiFi 密碼
+/*
+char ssid[] = "AIOT";     // 您的 WiFi 名稱
+char pass[] = "stu0123456789";     // 您的 WiFi 密碼
+ */
+
+// GPIO 腳位設定
+#define RED_LED     27
+#define YELLOW_LED  26
+#define GREEN_LED   25
+#define DHT_PIN     4
+#define SOIL_PIN    34
+#define LIGHT_PIN   35
+
+// DHT11
+DHTesp dht;
+
+// 土壤濕度校正與過乾判斷值
+#define SOIL_DRY_VALUE  0
+#define SOIL_WET_VALUE  1100
+#define SOIL_DRY_LEVEL  30
+
+// 系統狀態
+enum PlantState {
+  NEED_WATER,   // 需要澆水
+  WATERING,     // 澆水中
+  WATERED       // 澆水完成 / 不需要澆水
+};
+PlantState plantState = WATERED;
+
+BlynkTimer timer;
+
+// ======================================================
+// LED 控制函式
+// ======================================================
+void redLight() {
+  digitalWrite(RED_LED, HIGH);
+  digitalWrite(YELLOW_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
+}
+
+void yellowLight() {
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(YELLOW_LED, HIGH);
+  digitalWrite(GREEN_LED, LOW);
+}
+
+void greenLight() {
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(YELLOW_LED, LOW);
+  digitalWrite(GREEN_LED, HIGH);
+}
+
+void showPlantState() {
+  Serial.print("植物狀態：");
+  switch (plantState) {
+    case NEED_WATER:
+      Serial.println("需要澆水");
+      redLight();
+      break;
+
+    case WATERING:
+      Serial.println("澆水中");
+      yellowLight();
+      break;
+
+    case WATERED:
+      Serial.println("澆水完成 / 不需要澆水");
+      greenLight();
+      break;
+  }
+}
+
+// ======================================================
+// Blynk 按鈕控制 (V4)
+// ======================================================
+BLYNK_WRITE(V4) {
+  int pinValue = param.asInt(); // 取得 App 按鈕狀態 (1 代表按住/開啟，0 代表放開/關閉)
+  
+  if (pinValue == 1) {
+    // 按下/開啟按鈕：強制切換為澆水中 (黃燈)
+    plantState = WATERING;
+    Serial.println(">>> 收到 Blynk 澆水指令：開啟澆水 (黃燈)");
+  } else {
+    // 放開/關閉按鈕：恢復為一般模式，重新讀取土壤濕度進行自動判斷
+    Serial.println(">>> 收到 Blynk 停止澆水指令，恢復自動檢測模式");
+    
+    // 重新讀取一次土壤濕度進行狀態判斷
+    int soilRaw = analogRead(SOIL_PIN);
+    int soilPercent = map(soilRaw, SOIL_DRY_VALUE, SOIL_WET_VALUE, 0, 100);
+    soilPercent = constrain(soilPercent, 0, 100);
+    
+    if (soilPercent < SOIL_DRY_LEVEL) {
+      plantState = NEED_WATER; // 若還是太乾，放開後自動亮紅燈
+    } else {
+      plantState = WATERED;    // 若濕度足夠，亮綠燈
+    }
+  }
+  
+  // 立即更新 LED 燈光
+  showPlantState();
+}
+
+// ======================================================
+// 讀取感測器並傳送資料至 Blynk
+// ======================================================
+void sendSensorData() {
+  // 1. 讀取 DHT11
+  TempAndHumidity data = dht.getTempAndHumidity();
+  float temperature = data.temperature;
+  float humidity = data.humidity;
+
+  // 2. 讀取土壤濕度
+  int soilRaw = analogRead(SOIL_PIN);
+  int soilPercent = map(soilRaw, SOIL_DRY_VALUE, SOIL_WET_VALUE, 0, 100);
+  soilPercent = constrain(soilPercent, 0, 100);
+
+  // 3. 讀取光照度
+  int lightRaw = analogRead(LIGHT_PIN);
+
+  // 4. 自動狀態判斷 (當不在手動澆水狀態時)
+  if (plantState != WATERING) {
+    if (soilPercent < SOIL_DRY_LEVEL) {
+      plantState = NEED_WATER;
+    } else {
+      plantState = WATERED;
+    }
+  }
+
+  // 5. 更新 LED 狀態
+  showPlantState();
+
+  // 6. 輸出序列埠監控
+  Serial.println("==========================================");
+  Serial.print("🌡 溫度："); Serial.print(temperature, 1); Serial.println(" °C");
+  Serial.print("💧 空氣濕度："); Serial.print(humidity, 0); Serial.println(" %");
+  Serial.print("🌱 土壤濕度："); Serial.print(soilPercent); Serial.println(" %");
+  Serial.print("☀️ 光照 ADC："); Serial.println(lightRaw);
+  Serial.println("==========================================");
+
+  // 7. 將數據同步上傳至 Blynk (V0 ~ V3)
+  Blynk.virtualWrite(V0, temperature);
+  Blynk.virtualWrite(V1, humidity);
+  Blynk.virtualWrite(V2, soilPercent);
+  Blynk.virtualWrite(V3, lightRaw);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // 初始化 LED Pins
+  pinMode(RED_LED, OUTPUT);
+  pinMode(YELLOW_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  greenLight();
+
+  // 初始化 DHT11
+  dht.setup(DHT_PIN, DHTesp::DHT11);
+  delay(2000);
+
+  // 連線至 Blynk
+  Blynk.begin(auth, ssid, pass);
+
+  // 設定定時器：每 2 秒執行一次 sendSensorData
+  timer.setInterval(2000L, sendSensorData);
+}
+
+void loop() {
+  Blynk.run();        // 維持 Blynk 連線狀態
+  timer.run();        // 執行定時任務
+}
+```
