@@ -416,6 +416,89 @@ void loop() {
   }
 }
 ```
+### wifi test
+```
+#include <WiFi.h>
+
+// 填入你的 Wi-Fi 名稱與密碼
+const char* ssid     = "AIOT";
+const char* password = "stu0123456789";
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  Serial.println("\n--- ESP32 Wi-Fi 測試程式 ---");
+
+  // 設定 Wi-Fi 模式為 Station (用戶端)
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+
+  // --- 第一部分：掃瞄周圍 Wi-Fi ---
+  Serial.println("開始掃瞄周圍的 Wi-Fi 網路...");
+  int n = WiFi.scanNetworks();
+  Serial.println("掃瞄完成！");
+  
+  if (n == 0) {
+    Serial.println("未搜尋到任何 Wi-Fi 網路");
+  } else {
+    Serial.print("找到 ");
+    Serial.print(n);
+    Serial.println(" 個網路：");
+    for (int i = 0; i < n; ++i) {
+      // 印出 SSID、訊號強度 (RSSI) 與加密方式
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(" dBm) ");
+      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " [開放]" : " [已加密]");
+      delay(10);
+    }
+  }
+  Serial.println("------------------------------");
+
+  // --- 第二部分：連接至指定的 Wi-Fi ---
+  Serial.print("嘗試連接至：");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  // 等待連線，最多等待 20 秒
+  int timeoutCounter = 0;
+  while (WiFi.status() != WL_CONNECTED && timeoutCounter < 40) {
+    delay(500);
+    Serial.print(".");
+    timeoutCounter++;
+  }
+
+  // 判斷連線結果
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWi-Fi 連接成功！");
+    Serial.print("ESP32 IP 位址：");
+    Serial.println(WiFi.localIP());
+    Serial.print("訊號強度 (RSSI)：");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
+  } else {
+    Serial.println("\nWi-Fi 連接失敗，請檢查 SSID 或密碼是否正確。");
+  }
+}
+
+void loop() {
+  // 每 10 秒檢查一次連線狀態
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("Wi-Fi 狀態：保持連線中...");
+  } else {
+    Serial.println("Wi-Fi 狀態：連線已斷開！");
+  }
+  delay(10000);
+}
+
+```
+
 ## Blynk
 Blynk 是一個專為物聯網（IoT）設計的雲端平台與應用程式開發工具，能讓使用者快速建立硬體專案的遠端控制與監測介面。
 
