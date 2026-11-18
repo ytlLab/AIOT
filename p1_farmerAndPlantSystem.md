@@ -5,6 +5,8 @@
 - 當到達設定的時間（或土壤過乾時），ESP32 自動打包數據，經由 SSL 直連 HTTP POST 呼叫 Gemini API 取得植物養護建議。
 - ESP32 收到 Gemini 回傳的 JSON 文字後，直接發送 Webhook 到 Discord 頻道。若使用者在 Blynk 上按「澆水」，ESP32 直接驅動繼電器開關(使用紅綠燈模組模擬澆水狀態，紅燈表示需澆水，黃燈表示澆水中，綠燈表示澆水完畢)。
 
+[程式範例](https://drive.google.com/drive/folders/1UMSp_1_ZKqffHGtWJfPe30mqJSFHOcnD?usp=sharing)
+
 ## 基本程式範例
 | 元件         |   ESP32 |
 | ---------- | ------: |
