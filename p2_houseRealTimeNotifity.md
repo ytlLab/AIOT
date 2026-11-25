@@ -72,8 +72,7 @@ tone(Buzzer_PIN, C5, duration);   // 發出 C5 音，持續 100ms
 <img width="800" height="200" alt="image" src="https://github.com/user-attachments/assets/08d37fb7-d331-4a5a-87a5-d53f86b69fde" />
   
 2. 板載靈敏度調節電位器
- 
-SW-420 模組板載設有一個藍色十字形可變電阻（電位器），旋轉它可以根據實際環境需求微調震動觸發的靈敏度（順時針或逆時針微調可改變觸發難易度）。
+- SW-420 模組板載設有一個藍色十字形可變電阻（電位器），旋轉它可以根據實際環境需求微調震動觸發的靈敏度（順時針或逆時針微調可改變觸發難易度）。
 
 **重點**
 - 確認腳位 DO -> GPIO 4、VCC -> VCC、GND -> GND。
