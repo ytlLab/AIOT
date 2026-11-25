@@ -92,3 +92,25 @@ if (pir > 0) { digitalWrite(led, HIGH); }
 
 ---
 
+## 2. 地端整合 OLED（p02_5_Vib_PIR）
+
+把震動 + PIR + OLED + LED 整合成一個「地端防盜面板」。
+
+**畫面配置**
+
+| 區域 | Y 座標 | 內容 |
+|---|---|---|
+| 標題列 | 0 | ` AIoT Security System `（反白） |
+| 門狀態 | 16 | 震動 → `door open` / `door close` |
+| 人員狀態 | 42 | PIR → `someOne` / `noOne` |
+
+**關鍵邏輯**
+```cpp
+int isVibrating = digitalRead(VIBRATION_PIN);
+int pirState    = digitalRead(PIR_PIN);
+```
+- 偵測到開門震動時，畫面停留 1.5 秒方便閱讀；平常每 0.1 秒偵測一次，避免漏掉瞬間震動。
+
+**預期結果**：OLED 即時顯示門與人員狀態，PIR 觸發時板載 LED 亮起。
+
+---
