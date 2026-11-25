@@ -311,3 +311,110 @@ https.addHeader("Authorization", "Bot " + String(botToken));
 | 指令延遲 | 屬正常，輪詢間隔為 3 秒（`pollInterval`） |
 
 ---
+## 7. 加上時間標記（p02_9_discordBOT_time）
+
+**新增內容**：以 NTP 網路校時，在通知與指令回覆中加入時間。
+
+### 7-1 設定校時
+```cpp
+#include <time.h>
+configTime(8 * 3600, 0, "pool.ntp.org", "time.nist.gov");   // 台灣 UTC+8 = 28800 秒
+```
+- 第一個參數：時區偏移（秒）；第二個：日光節約時間偏移（台灣無，填 0）。
+
+### 7-2 取得格式化時間
+```cpp
+String getFormattedTime() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo, 100)) return "時間同步中...";
+  char buf[30];
+  strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  return String(buf);
+}
+```
+
+### 7-3 時間出現在哪裡
+- 開機通知：`連線時間`
+- 異常告警：`發生時間`
+- `!status` 回覆：`查詢時間`
+
+### 7-4 其他調整
+- 蜂鳴器改為「**僅由 `!alarm` 指令控制**」，感測異常只發通知，不再自動響。
+- 發送失敗時（回應碼非 200）會印出 Discord 回傳的錯誤內容，方便除錯。
+
+**預期告警範例**
+```
+🚨 AIoT 安全系統異常告警！
+• 發生時間: 2026-11-25 14:30:12
+• 震動感測器數值: 1 → 異常 (door open)
+• PIR 人體感測值: 0 → 正常 (noOne)
+```
+
+> 💡 若時間顯示「時間同步中...」，代表 NTP 尚未完成，稍待幾秒；若持續如此請確認網路可連外。
+
+---
+
+## 8. 補充：Blynk 控制（p02_10_blynk_buzz、p02_11_blynkFinal）
+
+### 8-1 為什麼補充 Blynk？
+Discord 適合「文字通知 + 指令」；Blynk 則提供**手機儀表板**（按鈕、燈號、數值顯示），操作更直覺。
+
+### 8-2 前置準備
+1. 註冊 <https://blynk.cloud>，建立 **Template**（硬體選 ESP32、連線方式 WiFi）。
+2. 建立 **Datastream**（Virtual Pin，以下為建議配置，請依實際程式調整）：
+
+| Virtual Pin | 名稱 | 資料型態 | 用途 |
+|---|---|---|---|
+| V0 | Buzzer | Integer 0~1 | 遠端控制蜂鳴器 |
+| V1 | Vibration | Integer 0~1 | 顯示門狀態 |
+| V2 | PIR | Integer 0~1 | 顯示人員狀態 |
+
+3. 建立 **Device**，取得 `BLYNK_TEMPLATE_ID`、`BLYNK_TEMPLATE_NAME`、`BLYNK_AUTH_TOKEN`。
+4. 手機安裝 Blynk App，建立 Dashboard（按鈕綁 V0、LED/Label 綁 V1、V2）。
+5. Arduino IDE 安裝 **Blynk** 函式庫（見 0.1）。
+
+### 8-3 p02_10_blynk_buzz：遠端控制蜂鳴器
+- 學習重點：`BLYNK_WRITE(V0)` 接收 App 按鈕、控制 GPIO 32。
+- 📎 （程式碼與說明待補）
+
+### 8-4 p02_11_blynkFinal：完整整合
+- 學習重點：感測器數值上傳（`Blynk.virtualWrite`）+ 蜂鳴器控制 + OLED +（可能含）Discord。
+- 📎 （程式碼與說明待補）
+
+### 8-5 Discord 與 Blynk 比較
+
+| 項目 | Discord | Blynk |
+|---|---|---|
+| 主要用途 | 文字通知、指令 | 圖形儀表板、按鈕 |
+| 控制方式 | 輸入指令 `!alarm` | 點擊按鈕 |
+| 即時性 | 輪詢（約 3 秒） | 近即時 |
+| 歷史紀錄 | 聊天紀錄即為紀錄 | 需另設定圖表 |
+
+---
+
+## 單元總結
+
+1. **地端**：感測器 → OLED / LED / 蜂鳴器即時反應。
+2. **單向通知**：Webhook 簡單好用，只能「發」。
+3. **雙向控制**：Bot API 可「發 + 收」，實現遠端指令。
+4. **時間標記**：NTP 校時讓每筆紀錄可追溯。
+5. **進階**：Blynk 提供視覺化操作介面。
+
+## 課後練習
+
+1. 把異常條件改成「震動 **且** PIR 同時觸發」，觀察通知頻率變化。
+2. 新增指令 `!led`，遠端切換板載 LED。
+3. 讓感測器觸發時，蜂鳴器自動響 3 秒（取消註解 `autoAlarmEndTime`）。
+4. 調整 `notifyCooldown` 與 `pollInterval`，比較「反應速度」與「訊息量」的取捨。
+5. 在 `!status` 回覆中加入 Wi-Fi 訊號強度 `WiFi.RSSI()`。
+
+## 附錄：常見錯誤速查
+
+| 現象 | 檢查項目 |
+|---|---|
+| 編譯找不到 `Adafruit_SSD1306.h` | 未安裝函式庫 |
+| OLED 不亮 | 接線、I2C 位址 `0x3C`、供電 |
+| `tone` 未定義 | ESP32 開發板套件版本過舊，請更新 |
+| Wi-Fi 連不上 | 帳密、2.4GHz、距離 |
+| Discord 無訊息 | Token / Webhook / 頻道權限 / Intent |
+| PIR 一直誤報 | 暖機未完成、供電不足（需 5V） |
