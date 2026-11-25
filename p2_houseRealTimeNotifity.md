@@ -114,3 +114,44 @@ int pirState    = digitalRead(PIR_PIN);
 **預期結果**：OLED 即時顯示門與人員狀態，PIR 觸發時板載 LED 亮起。
 
 ---
+## 3. Discord 註冊與申請機器人
+### 3-1 註冊帳號並建立伺服器
+1. 前往 <https://discord.com> 註冊並登入（手機 App 建議也安裝，才能收到推播）。
+2. 左側點「**＋**」→「建立我的」→ 選擇「僅供我和我的朋友使用」，建立自己的伺服器。
+3. 可新增一個文字頻道，例如 `#home-alert`。
+
+### 3-2 建立 Webhook（給第 4、5 步使用）
+1. 在頻道旁點齒輪 **編輯頻道** → **整合** → **Webhook** → **新 Webhook**。
+2. 取名（如 `ESP32 通報`）→ **複製 Webhook 網址**。
+3. 網址格式：`https://discord.com/api/webhooks/<ID>/<TOKEN>`
+
+### 3-3 申請機器人（給第 6、7 步使用）
+1. 前往 <https://discord.com/developers/applications> → **New Application**，輸入名稱。
+2. 左側 **Bot** 頁面 → **Reset Token** → **複製並妥善保存 Token**（只會顯示一次）。
+3. 同一頁往下找到 **Privileged Gateway Intents**，**開啟 `MESSAGE CONTENT INTENT`**，並儲存。
+   > ⚠️ 沒開這項，機器人讀取到的訊息內容會是空字串，`!alarm` 等指令將無法辨識。
+4. 左側 **OAuth2 → URL Generator**：
+   - Scopes 勾選 `bot`
+   - Bot Permissions 勾選：`檢視頻道(View Channels)`、`傳送訊息(Send Messages)`、`讀取訊息歷史紀錄(Read Message History)`
+5. 複製下方產生的網址，貼到瀏覽器，選擇你的伺服器 → 授權，機器人即加入伺服器。
+
+### 3-4 取得頻道 ID
+1. Discord 設定 → **進階** → 開啟 **開發者模式**。
+2. 在目標頻道上按右鍵 → **複製頻道 ID**。
+
+### 3-5 本步驟你需要準備的資料
+
+| 資料 | 用途 |
+|---|---|
+| Wi-Fi 名稱 / 密碼 | 所有連網程式（2.4GHz，ESP32 不支援 5GHz） |
+| Webhook 網址 | p02_6、p02_7 |
+| Bot Token | p02_8、p02_9 |
+| Channel ID | p02_8、p02_9 |
+
+> 🔐 **資安提醒**
+> - Webhook 網址與 Bot Token 等同「密碼」，**不要貼到公開的聊天室、GitHub 或作業截圖**。
+> - 若不慎外洩，請立刻到 Developer Portal 按 **Reset Token** / 刪除並重建 Webhook。
+> - 程式範例中請以 `"你的WiFi名稱"`、`"你的_BOT_TOKEN"` 等佔位文字替代，上課分享檔案前先檢查。
+
+---
+
