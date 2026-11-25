@@ -71,7 +71,7 @@ tone(Buzzer_PIN, C5, duration);   // 發出 C5 音，持續 100ms
 
 **操作**：輕敲或搖動感測器，觀察 OLED 與序列埠是否出現 `震動偵測！Door Open`。
 
-> 💡 若靈敏度太高或太低，可用模組上的藍色小螺絲（可變電阻）調整。
+> 若靈敏度太高或太低，可用模組上的藍色小螺絲（可變電阻）調整。
 
 ### 1-4 PIR 人體感測器（p02_4_PIR）
 
@@ -88,7 +88,7 @@ if (pir > 0) { digitalWrite(led, HIGH); }
 
 **操作**：手在感測器前揮動，觀察序列埠 `pir: 1` 與板載 LED。
 
-> ✅ 這一步全部通過，再進入下一步。
+> 這一步全部通過，再進入下一步。
 
 ---
 
@@ -129,7 +129,7 @@ int pirState    = digitalRead(PIR_PIN);
 1. 前往 <https://discord.com/developers/applications> → **New Application**，輸入名稱。
 2. 左側 **Bot** 頁面 → **Reset Token** → **複製並妥善保存 Token**（只會顯示一次）。
 3. 同一頁往下找到 **Privileged Gateway Intents**，**開啟 `MESSAGE CONTENT INTENT`**，並儲存。
-   > ⚠️ 沒開這項，機器人讀取到的訊息內容會是空字串，`!alarm` 等指令將無法辨識。
+   > 沒開這項，機器人讀取到的訊息內容會是空字串，`!alarm` 等指令將無法辨識。
 4. 左側 **OAuth2 → URL Generator**：
    - Scopes 勾選 `bot`
    - Bot Permissions 勾選：`檢視頻道(View Channels)`、`傳送訊息(Send Messages)`、`讀取訊息歷史紀錄(Read Message History)`
@@ -148,10 +148,46 @@ int pirState    = digitalRead(PIR_PIN);
 | Bot Token | p02_8、p02_9 |
 | Channel ID | p02_8、p02_9 |
 
-> 🔐 **資安提醒**
+> **資安提醒**
 > - Webhook 網址與 Bot Token 等同「密碼」，**不要貼到公開的聊天室、GitHub 或作業截圖**。
 > - 若不慎外洩，請立刻到 Developer Portal 按 **Reset Token** / 刪除並重建 Webhook。
 > - 程式範例中請以 `"你的WiFi名稱"`、`"你的_BOT_TOKEN"` 等佔位文字替代，上課分享檔案前先檢查。
 
 ---
+## 4. Discord Webhook 測試（p02_6_discordWebhook）
 
+**目的**：確認 ESP32 能連上 Wi-Fi 並成功送訊息到 Discord。
+
+**修改位置**
+```cpp
+char ssid[] = "你的WiFi名稱";
+char pass[] = "你的WiFi密碼";
+const char* discordWebhookUrl = "https://discord.com/api/webhooks/你的ID/你的TOKEN";
+```
+
+**核心：發送函式**
+```cpp
+WiFiClientSecure client;
+client.setInsecure();               // 略過 SSL 憑證驗證，讓連線更簡單穩定
+HTTPClient https;
+https.begin(client, discordWebhookUrl);
+https.addHeader("Content-Type", "application/json");
+String jsonPayload = "{\"content\": \"" + message + "\"}";   // Discord 規定格式
+int code = https.POST(jsonPayload);                           // 成功通常回 204
+```
+
+**預期結果**
+- 序列埠：`Wi-Fi 連線成功！` → `發送成功！HTTP 回應碼: 204`
+- Discord 頻道收到：`🤖 ESP32 機器人測試連線成功！系統已上線。`
+
+**常見問題**
+
+| 現象 | 可能原因 |
+|---|---|
+| 一直印 `.....` | Wi-Fi 帳密錯誤，或是 5GHz 網路 |
+| 回應碼 401 / 404 | Webhook 網址貼錯或已被刪除 |
+| 回應碼負數 | 網路或 HTTPS 連線失敗 |
+
+> `loop()` 刻意留空，開機只發一次，避免短時間大量發送被 Discord 限制（rate limit）。
+
+---
