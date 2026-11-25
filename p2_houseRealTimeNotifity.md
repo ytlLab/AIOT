@@ -241,3 +241,73 @@ int code = https.POST(jsonPayload);                           // 成功通常回
 
 ---
 
+
+## 6. Discord 機器人雙向告警（p02_8_discordBOT_Vib_PIR）
+
+與 Webhook 的差異：Webhook 只能「單向送出」；機器人除了發訊息，還能**讀取頻道訊息**，達成遠端控制。
+
+### 6-1 通訊架構
+
+```
+        ┌── 異常告警 / 回覆 ──▶
+ ESP32 ─┤                         Discord 頻道 ◀── 你輸入 !alarm / !stop / !status
+        └◀── 每 3 秒輪詢指令 ──┘
+```
+
+### 6-2 修改位置
+```cpp
+char ssid[] = "你的WiFi名稱";
+char pass[] = "你的WiFi密碼";
+const char* botToken  = "你的_BOT_TOKEN";
+const char* channelId = "你的_CHANNEL_ID";
+```
+
+### 6-3 新增的硬體：蜂鳴器（GPIO 32）
+蜂鳴器改為**非阻塞式**控制（用 `millis()` 計時，不用 `delay()`），因此感測、OLED、網路輪詢不會被卡住。警報為 C6 / G5 兩音交替，每 300ms 切換。
+
+### 6-4 兩個 API 呼叫
+
+| 方向 | 方法 | 網址 |
+|---|---|---|
+| ESP32 → Discord | `POST` | `https://discord.com/api/v10/channels/<ChannelID>/messages` |
+| Discord → ESP32 | `GET` | `https://discord.com/api/v10/channels/<ChannelID>/messages?limit=1` |
+
+驗證標頭：
+```cpp
+https.addHeader("Authorization", "Bot " + String(botToken));
+```
+
+### 6-5 指令處理流程（pollDiscordCommands）
+1. 每 3 秒抓取頻道**最新 1 則**訊息（`limit=1`，省記憶體）。
+2. 用 `ArduinoJson` 解析 `id`、`content`、`author.bot`。
+3. 以 `lastProcessedMessageId` 避免同一則指令重複執行。
+4. 忽略機器人自己發出的訊息（`author.bot`），避免自問自答。
+
+### 6-6 可用指令
+
+| 指令 | 功能 |
+|---|---|
+| `!alarm` | 遠端啟動蜂鳴器告警 |
+| `!stop` | 解除告警並關閉蜂鳴器 |
+| `!status` | 回報震動 / PIR 數值與蜂鳴器狀態 |
+
+### 6-7 測試步驟
+1. 上傳後觀察 OLED 顯示 `Connecting WiFi...`，之後顯示門 / 人員狀態。
+2. Discord 收到上線通知與指令說明。
+3. 在頻道輸入 `!status` → 約 3 秒內機器人回覆目前狀態。
+4. 輸入 `!alarm` → 蜂鳴器鳴響；輸入 `!stop` → 停止。
+5. 觸發感測器 → 收到異常告警。
+
+> 📝 程式中 `//autoAlarmEndTime = now + 3000;` 被註解掉，表示「感測器觸發時**不**自動響蜂鳴器」，只發 Discord 通知；若想要本地同步響 3 秒，把註解拿掉即可。
+
+### 6-8 常見問題
+
+| 現象 | 解決方式 |
+|---|---|
+| 發送回應碼 403 | 機器人沒有該頻道的發言 / 檢視權限 |
+| 發送回應碼 401 | Token 錯誤或已被重置 |
+| 指令都沒反應，`content` 為空 | **沒開啟 `MESSAGE CONTENT INTENT`** |
+| 編譯錯誤 `JsonDocument` 未定義 | ArduinoJson 版本太舊，請升級至 7.x |
+| 指令延遲 | 屬正常，輪詢間隔為 3 秒（`pollInterval`） |
+
+---
